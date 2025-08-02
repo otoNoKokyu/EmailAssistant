@@ -2,9 +2,8 @@ import smtplib
 from email.mime.text import MIMEText
 import base64
 import re
-
 from typing import List, Dict
-from external.email import EmailProvider
+from src.external.email import EmailProvider
 
 
 class EmailAssistant:

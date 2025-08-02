@@ -10,7 +10,7 @@ class Gemini:
         self._client = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash", 
             timeout=None,
-            api_key=os.getenv("GEMINI_API_KEY")
+            api_key=os.getenv("GEMINI_API_KEY"),
         )
     @property
     def client(self):

@@ -1,19 +1,23 @@
+from contextlib import asynccontextmanager
 import json
 from fastapi import FastAPI, HTTPException, Query, Request
-# from EmailAutomator.processEmail import preprocess_email_body
-from processEmail import preprocess_email_body
-# from models import EmailRequest
-import os
-import re
-from EmailAutomatorDeprecated.llm_utils import  Invoke_LLM, do_agentic_shit, handle_user_queries, process_action
-from email_utils import  get_full_message_body, load_credentials_from_file, save_credentials_to_file
-from google_auth_oauthlib.flow import InstalledAppFlow
-CLIENT_SECRET_FILE = "client_secret.json"
-from fastapi.responses import JSONResponse,RedirectResponse
-from google_auth_oauthlib.flow import Flow
-from google.auth.transport.requests import Request as GoogleRequest
-
+from fastapi.responses import RedirectResponse
 from googleapiclient.discovery import build
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    shared_state["initialized"] = True
+    print("🌟 App initializing…")
+    await init_expensive_resources()
+    yield
+    # Code during shutdown
+    await cleanup_resources()
+    print("🧹 Cleanup complete")
+
+app = FastAPI(lifespan=lifespan)
+
+
+
 app = FastAPI()
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 SCOPES = [
