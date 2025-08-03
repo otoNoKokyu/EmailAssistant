@@ -3,12 +3,12 @@ from email.mime.text import MIMEText
 import base64
 import re
 from typing import List, Dict
-from src.external.email import EmailProvider
+from src.external.email import EmailProvider, GmailProvider
 
 
 class EmailAssistant:
-    def __init__(self, provider: EmailProvider):
-        self.provider = provider
+    def __init__(self, provider: EmailProvider = None):
+        self.provider = provider or GmailProvider()
         self.email = provider.get_email_address()
         self.password = provider.get_email_password()
 
@@ -23,6 +23,30 @@ class EmailAssistant:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:  # Optional: abstract SMTP host too
             smtp.login(self.email, self.password)
             smtp.send_message(msg)
+
+    def find_contact_email(self, query: str) -> str:
+        service = self.provider.get_contact_client()
+        results = service.otherContacts().list(
+            pageSize=1000,
+            readMask='names,emailAddresses'
+        ).execute()
+
+        contacts = results.get("otherContacts", [])
+        contacts.append({"name": "me", "email": self._email})
+
+        pattern = re.compile(query, re.IGNORECASE)
+
+        for person in contacts:
+            names = person.get("names", [])
+            emails = person.get("emailAddresses", [])
+            if not emails:
+                continue
+            email = emails[0]["value"]
+            name = names[0]["displayName"] if names else ""
+            if pattern.search(name) or pattern.search(email):
+                return email
+
+        return query  # fallback
 
     def send_reply(self, to_email: str, subject: str, body: str, reply_to_message_id: str):
         recipient = self.provider.find_contact_email(to_email)

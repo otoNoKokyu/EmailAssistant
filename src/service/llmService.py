@@ -2,8 +2,8 @@ import ast
 from datetime import datetime
 import json
 import re
-from typing import Callable,Optional
-
+import logging
+logger = logging.getLogger(__name__)
 from src.external.llm import Gemini
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -15,9 +15,9 @@ import re
 from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage
 
-class LLM(Gemini):
-    def __init__(self):
-        super().__init__()
+class LLM():
+    def __init__(self,llm_client = None):
+        self.llm_client = llm_client or Gemini()
 
     def extract_first_dict_from_response(self, response: str):
         code_blocks = re.findall(r"```(?:json)?\n([\s\S]*?)```", response)
@@ -71,28 +71,28 @@ class LLM(Gemini):
         except:
             return None
     
-    def invokeLLM(self, prompt: str, wrapperFn: Optional[Callable[[str], dict]] = None):
-        data = self.client.invoke(prompt).content
-        return wrapperFn(data) if wrapperFn else data
+    def invokeLLM(self, prompt: str, jsonSerialize: bool = False):
+        data = self.llm_client.call(prompt)
+        return self.extract_json(data) if jsonSerialize else data
 
-    def getEmailAgentSchema(self, sys_prompt: str, user_query: str):
+
+class AgentOrchestrator(LLM):
+    def __init__(self):
+        super().__init__()
+    
+    def getEmailActions(self,user_query:str):
+        return self.__getEmailAgentSchema(system_prompt,user_query)
+    
+    def __getEmailAgentSchema(self, sys_prompt: str, user_query: str):
         current_time = datetime.now().isoformat()
         full_system_prompt = f"{sys_prompt}\n\nCurrent time: {current_time}"
         messages = [
             SystemMessage(content=full_system_prompt),
             HumanMessage(content=user_query)
         ]
-        data = self.client.invoke(messages).content
-        return self.extract_json(data)
-        
-
-class AgentOrchestrator(LLM):
-    def __init__(self):
-        super().__init__()
+        return self.invokeLLM(messages,True)
     
-    def fetchActions(self,user_query:str):
-        return self.getEmailAgentSchema(system_prompt,user_query)
-    
+    @staticmethod
     def create_satisfaction_prompt(user_query: str, result: str) -> str:
         prompt_sections = [
             "\n### user_query ###",
@@ -108,19 +108,17 @@ class AgentOrchestrator(LLM):
         satisfaction_prompt =  self.create_satisfaction_prompt(user_query,result)
         return self.invokeLLM(satisfaction_prompt)
     
-class EmailAgent():
-    def __init__(self, actions, query, emailProvider: EmailAssistant, orchester: AgentOrchestrator ):
-        self.actions = actions
-        self.query = query
+class EmailAgent:
+    def __init__(self, emailProvider: EmailAssistant, orchester: AgentOrchestrator ):
         self.local_action_result = {}
         self.provider = emailProvider
         self.orchester = orchester
 
-    def run(self):
-        """Entry point to process all actions."""
-        return self._process_actions(self.actions)
+    # def run(self):
+    #     """Entry point to process all actions."""
+    #     return self._process_actions(self.actions)
 
-    def _process_actions(self, action_list):
+    def run(self, action_list):
         for action in action_list:
             handler = getattr(self, f"_handle_{action['type']}", None)
             if handler:
@@ -136,7 +134,7 @@ class EmailAgent():
             if emails["results"]:
                 break
         if not emails["results"]:
-            print("No matching emails found for any query variant.")
+            logger.info("No matching emails found for any query variant.")
             return
         self.local_action_result[action["id"]] = json.dumps(emails["results"], indent=2)
         if len(self.actions) == 1:
@@ -150,12 +148,12 @@ class EmailAgent():
         )
 
     def _handle_schedule_meeting(self, action):
-        print(
+        logger.info(
             f"Scheduling meeting with {action['params']['with']} on {action['params']['datetime']}"
         )
 
     def _handle_summarize(self, action):
-        print("Summarizing results from:", action["params"]["email_ref"])
+        logger.info("Summarizing results from:", action["params"]["email_ref"])
 
     def _handle_conditional(self, action):
         c = action["condition"]
@@ -198,7 +196,7 @@ class EmailAgent():
     def _handle_reply_email(self, action):
         result = json.loads(self.local_action_result.get(action["depends_on"], "[]"))
         if not result:
-            print("No email found to reply to.")
+            logger.info("No email found to reply to.")
             return
         email = result[0]
         self.provider.send_reply(
@@ -209,7 +207,7 @@ class EmailAgent():
         )
 
     def _handle_unknown(self, action):
-        print(f"Unknown action type: {action['type']}")
+        logger.info(f"Unknown action type: {action['type']}")
 
 
     

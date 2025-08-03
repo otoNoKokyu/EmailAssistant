@@ -1,18 +1,24 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage
 from dotenv import load_dotenv
+from abc import ABC, abstractmethod
 import os
 
-class Gemini:
-    _client = None
+
+class AbstractLLM(ABC):
+    @abstractmethod
+    def call(self, prompt: str):
+        pass
+
+class Gemini(AbstractLLM):
     def __init__(self):
         load_dotenv()
-        self._client = ChatGoogleGenerativeAI(
+        self.__client = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash", 
             timeout=None,
             api_key=os.getenv("GEMINI_API_KEY"),
         )
-    @property
-    def client(self):
-        return self._client
+
+    def call(self, prompt: str):
+        return self.__client.invoke(prompt).content
         
+    
