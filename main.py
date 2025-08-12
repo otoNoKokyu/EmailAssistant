@@ -5,8 +5,9 @@ from fastapi.responses import JSONResponse
 from googleapiclient.discovery import build
 from tortoise import Tortoise
 from tortoise.contrib.fastapi import register_tortoise
+from src.models.googleCredential import GoogleCredential
 from src.service.emailService import EmailAssistant
-from src.service.llmService import LLM, AgentOrchestrator, EmailAgent
+from src.service.llmService import  EmailAgentOrchestrator, EmailAgent
 from src.models.user import User
 from src.db.mysql import TORTOISE_ORM
 from src.external.config import GoogleAuthManager
@@ -23,9 +24,8 @@ async def tortoise_app_context(app):
 
 app = FastAPI(lifespan=tortoise_app_context)
 auth_manager = GoogleAuthManager()
-llmAgent = AgentOrchestrator()
-emailProvider = EmailAssistant()
-emailAgent = EmailAgent(emailProvider, llmAgent)
+llmAgent = EmailAgentOrchestrator()
+
 
 @app.get("/hasUsers")
 async def has_users():
@@ -69,10 +69,19 @@ async def oauth2callback(request: Request):
 
 
 @app.get("/search")
-def search_messages(query: str = Query(...),email: str = Query(None)):
+async def search_messages(query: str = Query(...),email: str = Query(None)):
     try:
+        userCredential = await GoogleCredential.get_or_none(gmail_account_email=email)
+        if not userCredential:
+            return JSONResponse(status_code=409, content={"status": "error", "message": "User credentials not found."})
+        emailProvider = EmailAssistant(credential_record=userCredential)
+        emailAgent = EmailAgent(emailProvider, llmAgent,query)
         actions = llmAgent.getEmailActions(query)
-        x = emailAgent.run(actions)
+        x = await emailAgent.run(actions)
+        return JSONResponse(status_code=200, content={"status": "success", "data": x})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
     except json.JSONDecodeError as e:
         print("Failed to parse LLM response as JSON:", e)
     

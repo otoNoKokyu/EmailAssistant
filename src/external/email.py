@@ -20,19 +20,13 @@ class EmailProvider(ABC):
         pass
 
     @abstractmethod
-    def get_mail_client(self):  # could be Gmail, Outlook, etc.
+    async def get_mail_client(self):  # could be Gmail, Outlook, etc.
         pass
 
     @abstractmethod
-    def get_contact_client(self):  # e.g. Google People API, Outlook People API
+    async def get_contact_client(self):  # e.g. Google People API, Outlook People API
         pass
 
-    @abstractmethod
-    def find_contact_email(self, query: str) -> str:
-        """
-        Find and return an email address matching a contact search query.
-        """
-        pass
 
 
 class GmailProvider(EmailProvider):

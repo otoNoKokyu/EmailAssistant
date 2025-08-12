@@ -101,16 +101,18 @@ class GoogleAuthManager:
 
             # Save credentials in DB
             try:
-                await GoogleCredential.create(
+                await GoogleCredential.update_or_create(
+                    defaults={
+                        "token": creds.token,
+                        "refresh_token": creds.refresh_token,
+                        "token_uri": creds.token_uri,
+                        "client_id": creds.client_id,
+                        "client_secret": creds.client_secret,
+                        "scopes": creds.scopes,
+                        "expiry": creds.expiry,
+                    },
                     user=user,
                     gmail_account_email=user_email,
-                    token=creds.token,
-                    refresh_token=creds.refresh_token,
-                    token_uri=creds.token_uri,
-                    client_id=creds.client_id,
-                    client_secret=creds.client_secret,
-                    scopes=creds.scopes,
-                    expiry=creds.expiry
                 )
             except e:
                 raise HTTPException(500, f"Failed to save credentials: {e}")
