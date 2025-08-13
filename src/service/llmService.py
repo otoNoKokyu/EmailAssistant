@@ -298,8 +298,8 @@ class EmailAgent:
                 stringified_result,
                 self.query
             )
-            # summary = self.orchester.invokeLLM(summarize_prompt)
-            return json.loads(stringified_result)
+            summary = self.orchester.invokeLLM(summarize_prompt)
+            return summary
         except Exception as e:
             logger.error(f"Error creating summary: {e}")
             return f"Found {len(all_snippets)} emails but failed to summarize."
@@ -330,7 +330,7 @@ class EmailAgent:
         
         # Store results in local state
         if emails.get("results"):
-            snippets = [email.get("snippets", "") for email in emails["results"]]
+            snippets = [email.get("snippet", "") for email in emails["results"]]
             self.local_action_result[action_id] = json.dumps(snippets, indent=2)
             logger.info(f"Found {len(snippets)} emails for action {action_id}")
         else:

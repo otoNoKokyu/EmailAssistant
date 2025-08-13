@@ -95,9 +95,7 @@ satisfaction_question = (
 summarization_prompt = """
 You are an intelligent email assistant.
 
-Summarize the following list of emails based on the user query. Focus on the key topics, senders, dates, and any patterns such as recurring senders, common subjects, or urgency.
-
-The input is a stringified list of email dictionaries, where each dictionary contains fields like: "subject", "from", "to", "date", "snippet", "body", and "labels".
+Summarize the following  based on the user query. Focus on the key topic.
 
 Please be aware that many of contents will be masked for privacy reasons, so focus on the structure and context rather than specific content.
 **Input:**

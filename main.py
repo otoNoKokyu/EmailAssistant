@@ -10,6 +10,7 @@ from src.service.emailService import EmailAssistant
 from src.service.llmService import  EmailAgentOrchestrator, EmailAgent
 from src.models.user import User
 from src.db.mysql import TORTOISE_ORM
+from fastapi.middleware.cors import CORSMiddleware
 from src.external.config import GoogleAuthManager
 
 
@@ -23,6 +24,18 @@ async def tortoise_app_context(app):
         await Tortoise.close_connections()
 
 app = FastAPI(lifespan=tortoise_app_context)
+origins = [
+    "http://localhost:5173",  
+    "http://127.0.0.1:5173", 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,          
+    allow_credentials=True,
+    allow_methods=["*"],            
+    allow_headers=["*"],            
+)
 auth_manager = GoogleAuthManager()
 llmAgent = EmailAgentOrchestrator()
 
